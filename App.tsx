@@ -66,12 +66,29 @@ const App: React.FC = () => {
       template.fontFamily
     );
 
+    // A4 page width is 210mm, with 10mm margins on each side = 190mm usable
+    // 190mm at 96dpi ≈ 718px
+    const pdfContentWidth = 718;
+
     // Create a temporary container for the email content
     const container = document.createElement('div');
     container.innerHTML = fullHtml;
-    container.style.width = `${template.maxWidth}px`;
+    container.style.width = `${pdfContentWidth}px`;
+    container.style.maxWidth = `${pdfContentWidth}px`;
     container.style.margin = '0 auto';
     container.style.backgroundColor = '#ffffff';
+    container.style.padding = '0';
+    container.style.boxSizing = 'border-box';
+
+    // Force all images to fit within the container
+    const style = document.createElement('style');
+    style.textContent = `
+      * { max-width: 100% !important; box-sizing: border-box; }
+      img { max-width: 100% !important; height: auto !important; }
+      table { max-width: 100% !important; }
+    `;
+    container.appendChild(style);
+
     document.body.appendChild(container);
 
     try {
@@ -79,10 +96,15 @@ const App: React.FC = () => {
       const html2pdf = (await import('html2pdf.js')).default;
 
       const opt = {
-        margin: 10,
+        margin: [10, 10, 10, 10],
         filename: 'email-template.pdf',
         image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          width: pdfContentWidth,
+          windowWidth: pdfContentWidth
+        },
         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
       };
 
