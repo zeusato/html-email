@@ -1,0 +1,5 @@
+{
+  "name": "DocxToEmail Converter",
+  "description": "A full-stack application to convert Word documents into responsive HTML emails with customizable headers and footers, featuring live editing and PDF export.",
+  "requestFramePermissions": []
+}
