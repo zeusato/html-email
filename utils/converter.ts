@@ -21,74 +21,75 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 /**
- * Convert modern HTML to Outlook-compatible HTML
- * Handles Outlook 2007-2019 which uses Word rendering engine
+ * Convert HTML content to have inline styles for email compatibility
+ * Processes all elements and adds inline styles directly
  */
-const convertToOutlookCompatible = (html: string): string => {
-  // Create a temporary DOM to parse and modify HTML
+const inlineStyles = (html: string, fontFamily: string): string => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<div id="root">${html}</div>`, 'text/html');
   const root = doc.getElementById('root');
 
   if (!root) return html;
 
-  // Process all elements to inline critical styles
+  const baseStyle = `font-family: ${fontFamily}; font-size: 11pt; color: #333333;`;
+
   const processElement = (element: Element) => {
     const tagName = element.tagName.toLowerCase();
-    const existingStyle = element.getAttribute('style') || '';
-    let newStyles: string[] = [];
+    let styles: string[] = [];
 
-    // Add default styles based on tag type
     switch (tagName) {
       case 'p':
-        newStyles.push('margin: 0', 'padding: 0', 'mso-line-height-rule: exactly');
+        styles.push(baseStyle, 'text-align: justify', 'padding: 10px 0', 'margin: 0');
         break;
       case 'h1':
-        newStyles.push('margin: 0', 'padding: 0', 'font-size: 24px', 'font-weight: bold', 'mso-line-height-rule: exactly');
+        styles.push(baseStyle, 'font-size: 24px', 'font-weight: bold', 'padding: 10px 0', 'margin: 0');
         break;
       case 'h2':
-        newStyles.push('margin: 0', 'padding: 0', 'font-size: 20px', 'font-weight: bold', 'mso-line-height-rule: exactly');
+        styles.push(baseStyle, 'font-size: 20px', 'font-weight: bold', 'padding: 10px 0', 'margin: 0');
         break;
       case 'h3':
-        newStyles.push('margin: 0', 'padding: 0', 'font-size: 16px', 'font-weight: bold', 'mso-line-height-rule: exactly');
-        break;
-      case 'img':
-        newStyles.push('display: block', 'border: 0', 'outline: none', 'text-decoration: none');
-        // Add width/height attributes for Outlook
-        const imgEl = element as HTMLImageElement;
-        if (imgEl.style.width) {
-          element.setAttribute('width', imgEl.style.width.replace('px', ''));
-        }
-        if (imgEl.style.height) {
-          element.setAttribute('height', imgEl.style.height.replace('px', ''));
-        }
-        break;
-      case 'a':
-        newStyles.push('color: #0066cc', 'text-decoration: underline');
-        break;
-      case 'ul':
-      case 'ol':
-        newStyles.push('margin: 0', 'padding: 0 0 0 20px');
-        break;
-      case 'li':
-        newStyles.push('margin: 0', 'padding: 0');
+        styles.push(baseStyle, 'font-size: 16px', 'font-weight: bold', 'padding: 10px 0', 'margin: 0');
         break;
       case 'strong':
       case 'b':
-        newStyles.push('font-weight: bold');
+        styles.push('font-weight: bold');
         break;
       case 'em':
       case 'i':
-        newStyles.push('font-style: italic');
+        styles.push('font-style: italic');
+        break;
+      case 'u':
+        styles.push('text-decoration: underline');
+        break;
+      case 'a':
+        styles.push('color: #0066cc', 'text-decoration: underline');
+        break;
+      case 'ul':
+        styles.push('margin: 0', 'padding: 0 0 0 20px');
+        break;
+      case 'ol':
+        styles.push('margin: 0', 'padding: 0 0 0 20px');
+        break;
+      case 'li':
+        styles.push(baseStyle, 'padding: 5px 0', 'margin: 0');
+        break;
+      case 'img':
+        styles.push('max-width: 100%', 'height: auto', 'display: block');
+        break;
+      case 'div':
+        // Check if it's an image container with alignment
+        const textAlign = (element as HTMLElement).style.textAlign;
+        if (textAlign) {
+          styles.push(`text-align: ${textAlign}`, 'margin: 10px 0');
+        }
         break;
     }
 
-    // Merge existing styles with new ones
-    if (newStyles.length > 0) {
-      const combinedStyle = existingStyle
-        ? `${existingStyle}; ${newStyles.join('; ')}`
-        : newStyles.join('; ');
-      element.setAttribute('style', combinedStyle);
+    // Merge with existing styles
+    const existingStyle = element.getAttribute('style') || '';
+    if (styles.length > 0) {
+      const newStyle = existingStyle ? `${styles.join('; ')}; ${existingStyle}` : styles.join('; ');
+      element.setAttribute('style', newStyle);
     }
 
     // Process children
@@ -96,12 +97,76 @@ const convertToOutlookCompatible = (html: string): string => {
   };
 
   processElement(root);
-
   return root.innerHTML;
 };
 
 /**
- * Generate full email HTML with optional Outlook compatibility mode
+ * Convert content to table rows format (each block element becomes a table row)
+ */
+const contentToTableRows = (html: string, fontFamily: string): string => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div id="root">${html}</div>`, 'text/html');
+  const root = doc.getElementById('root');
+
+  if (!root) return html;
+
+  const baseStyle = `font-family: ${fontFamily}; font-size: 11pt; color: #333333; text-align: justify; padding: 10px 0;`;
+  
+  let rows = '';
+  
+  // Process each top-level element
+  Array.from(root.children).forEach(child => {
+    const tagName = child.tagName.toLowerCase();
+    let cellStyle = baseStyle;
+    let content = child.innerHTML;
+    
+    // Handle special tags
+    switch (tagName) {
+      case 'h1':
+        cellStyle = `font-family: ${fontFamily}; font-size: 24px; font-weight: bold; color: #333333; padding: 10px 0;`;
+        content = `<strong>${child.innerHTML}</strong>`;
+        break;
+      case 'h2':
+        cellStyle = `font-family: ${fontFamily}; font-size: 20px; font-weight: bold; color: #333333; padding: 10px 0;`;
+        content = `<strong>${child.innerHTML}</strong>`;
+        break;
+      case 'h3':
+        cellStyle = `font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #333333; padding: 10px 0;`;
+        content = `<strong>${child.innerHTML}</strong>`;
+        break;
+      case 'ul':
+      case 'ol':
+        cellStyle = `font-family: ${fontFamily}; font-size: 11pt; color: #333333; padding: 5px 0 5px 20px;`;
+        content = child.outerHTML;
+        break;
+      case 'div':
+        // Check for image container
+        const img = child.querySelector('img');
+        if (img) {
+          const align = (child as HTMLElement).style.textAlign || 'center';
+          const imgSrc = img.getAttribute('src') || '';
+          const imgWidth = (img as HTMLImageElement).style.width || '';
+          const widthAttr = imgWidth ? `width="${imgWidth.replace('px', '')}"` : '';
+          content = `<img src="${imgSrc}" ${widthAttr} style="display: block; max-width: 100%; height: auto;" alt="Image" />`;
+          cellStyle = `padding: 10px 0; text-align: ${align};`;
+        }
+        break;
+    }
+    
+    rows += `
+                <tr>
+                    <td style="${cellStyle}">
+                        ${content}
+                    </td>
+                </tr>`;
+  });
+  
+  return rows;
+};
+
+/**
+ * Generate email HTML - simplified format, just the table structure
+ * All styles are inline, compatible with Outlook
  */
 export const generateFullEmailHtml = (
   bodyHtml: string,
@@ -110,185 +175,62 @@ export const generateFullEmailHtml = (
   outlookCompatible: boolean = false,
   maxWidth: number = 600,
   fontFamily: string = 'Arial, sans-serif'
-) => {
-  // Process body HTML for Outlook if needed
-  const processedBody = outlookCompatible ? convertToOutlookCompatible(bodyHtml) : bodyHtml;
-
-  if (outlookCompatible) {
-    return generateOutlookEmail(processedBody, headerImg, footerImg, maxWidth, fontFamily);
-  }
-
-  // Standard modern email template
-  const headerHtml = headerImg
-    ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${headerImg}" style="max-width: 100%; height: auto;" alt="Header" /></div>`
-    : '';
-
-  const footerHtml = footerImg
-    ? `<div style="text-align: center; margin-top: 20px;"><img src="${footerImg}" style="max-width: 100%; height: auto;" alt="Footer" /></div>`
-    : '';
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  body { font-family: ${fontFamily}; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-  .email-container { max-width: ${maxWidth}px; margin: 0 auto; padding: 20px; }
-  .email-content { background: #ffffff; font-family: inherit; }
-  img { max-width: 100%; }
-  table { width: 100%; border-collapse: collapse; }
-  td, th { border: 1px solid #ddd; padding: 8px; }
-  strong, b { font-weight: bold; font-family: inherit; }
-  em, i { font-style: italic; font-family: inherit; }
-  p, div, span, li, td, th, h1, h2, h3, h4, h5, h6 { font-family: inherit; }
-</style>
-</head>
-<body>
-  <div class="email-container">
-    ${headerHtml}
-    <div class="email-content">
-      ${processedBody}
-    </div>
-    ${footerHtml}
-  </div>
-</body>
-</html>`;
-};
-
-/**
- * Generate Outlook-compatible email using table-based layout
- * with MSO conditional comments for maximum compatibility
- */
-const generateOutlookEmail = (
-  bodyHtml: string,
-  headerImg: string | null,
-  footerImg: string | null,
-  maxWidth: number = 600,
-  fontFamily: string = 'Arial, Helvetica, sans-serif'
 ): string => {
+  // Process body HTML to have inline styles
+  const processedBody = inlineStyles(bodyHtml, fontFamily);
+  
+  // Header image row
   const headerHtml = headerImg
     ? `
-    <tr>
-      <td align="center" style="padding: 0 0 20px 0;">
-        <!--[if mso]>
-        <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:${maxWidth}px;">
-        <v:fill type="frame" src="${headerImg}" />
-        <v:textbox inset="0,0,0,0">
-        <![endif]-->
-        <img src="${headerImg}" width="${maxWidth}" style="display: block; width: 100%; max-width: ${maxWidth}px; height: auto; border: 0;" alt="Header" />
-        <!--[if mso]>
-        </v:textbox>
-        </v:rect>
-        <![endif]-->
-      </td>
-    </tr>`
+            <!-- Header Image -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="margin: 0; padding: 0;">
+                        <img style="width: 100%; max-width: ${maxWidth}px; height: auto; display: block;"
+                            src="${headerImg}"
+                            width="${maxWidth}" alt="Header">
+                    </td>
+                </tr>
+            </table>`
     : '';
 
+  // Footer image row  
   const footerHtml = footerImg
     ? `
-    <tr>
-      <td align="center" style="padding: 20px 0 0 0;">
-        <img src="${footerImg}" width="${maxWidth}" style="display: block; width: 100%; max-width: ${maxWidth}px; height: auto; border: 0;" alt="Footer" />
-      </td>
-    </tr>`
+            <!-- Footer Image -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td style="margin: 0; padding: 0;">
+                        <img style="width: 100%; max-width: ${maxWidth}px; height: auto; display: block;"
+                            src="${footerImg}"
+                            width="${maxWidth}" alt="Footer">
+                    </td>
+                </tr>
+            </table>`
     : '';
 
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-  <!--[if gte mso 9]>
-  <xml>
-    <o:OfficeDocumentSettings>
-      <o:AllowPNG/>
-      <o:PixelsPerInch>96</o:PixelsPerInch>
-    </o:OfficeDocumentSettings>
-  </xml>
-  <![endif]-->
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Email</title>
-  
-  <!--[if mso]>
-  <style type="text/css">
-    body, table, td, a { font-family: ${fontFamily} !important; }
-    table { border-collapse: collapse; }
-  </style>
-  <![endif]-->
-  
-  <!--[if !mso]><!-->
-  <style type="text/css">
-    body {
-      margin: 0 !important;
-      padding: 0 !important;
-      -webkit-text-size-adjust: 100% !important;
-      -ms-text-size-adjust: 100% !important;
-    }
-    img {
-      -ms-interpolation-mode: bicubic;
-    }
-    a[x-apple-data-detectors] {
-      color: inherit !important;
-      text-decoration: none !important;
-    }
-  </style>
-  <!--<![endif]-->
-</head>
-<body style="margin: 0 !important; padding: 0 !important; background-color: #f4f4f4;" bgcolor="#f4f4f4">
-  
-  <!--[if mso]>
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#f4f4f4">
-  <tr>
-  <td align="center">
-  <![endif]-->
-  
-  <!-- Outer wrapper table for centering -->
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f4f4;" bgcolor="#f4f4f4">
+  // Content rows
+  const contentRows = contentToTableRows(processedBody, fontFamily);
+
+  // Generate the simplified email HTML (table only, no DOCTYPE/html/head)
+  return `<!--[if mso]>
+<table role="presentation" width="${maxWidth}" align="center" cellpadding="0" cellspacing="0" border="0">
+<tr><td>
+<![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+    style="max-width: ${maxWidth}px; margin: 0 auto;">
     <tr>
-      <td align="center" style="padding: 20px 10px;">
-        
-        <!--[if mso]>
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${maxWidth}" align="center">
-        <tr>
-        <td>
-        <![endif]-->
-        
-        <!-- Main content table - ${maxWidth}px max width -->
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: ${maxWidth}px; background-color: #ffffff;" bgcolor="#ffffff">
-          
-          ${headerHtml}
-          
-          <!-- Email Body -->
-          <tr>
-            <td style="padding: 20px; font-family: ${fontFamily}; font-size: 14px; line-height: 1.6; color: #333333;" bgcolor="#ffffff">
-              ${bodyHtml}
-            </td>
-          </tr>
-          
-          ${footerHtml}
-          
-        </table>
-        <!-- End main content table -->
-        
-        <!--[if mso]>
+        <td>${headerHtml}
+
+            <!-- Content -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="max-width: ${maxWidth}px;">${contentRows}
+            </table>${footerHtml}
         </td>
-        </tr>
-        </table>
-        <![endif]-->
-        
-      </td>
     </tr>
-  </table>
-  <!-- End outer wrapper table -->
-  
-  <!--[if mso]>
-  </td>
-  </tr>
-  </table>
-  <![endif]-->
-  
-</body>
-</html>`;
+</table>
+<!--[if mso]>
+</td></tr>
+</table>
+<![endif]-->`;
 };
