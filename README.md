@@ -1,34 +1,70 @@
-# DocxToEmail Converter
+# HTML Email Builder
 
-A pure client-side web application that transforms Microsoft Word documents (.docx) into responsive, email-ready HTML. 
+Công cụ tạo email HTML chuyên nghiệp từ file Word (.docx) hoặc soạn trực tiếp.
 
-## Environment Note
+🔗 **Demo:** https://zeusato.github.io/html-email/
 
-**This version has been refactored for browser-only environments.** 
-It removes dependency on server-side libraries (Express, Puppeteer) to ensure stability in previews.
+## ✨ Tính năng
 
-## Features
+### 📄 Chuyển đổi DOCX
+- Import file Word (.docx) và tự động chuyển thành HTML
+- Giữ nguyên định dạng: bold, italic, heading, list...
 
-1.  **Docx Conversion**: Uses `mammoth.js` in the browser to convert .docx files.
-2.  **Custom Branding**: Upload header and footer images instantly.
-3.  **Dual Editing**:
-    *   **Visual Editor**: WYSIWYG editing via Quill.js.
-    *   **Code Editor**: Direct HTML source editing.
-4.  **Export**:
-    *   **HTML**: Download clean HTML files.
-    *   **PDF**: Uses native browser printing for PDF generation.
+### 🎨 Editor mạnh mẽ
+- **Rich Text Editor** với Lexical - hỗ trợ:
+  - Heading H1/H2/H3
+  - Bold, Italic, Underline, Strikethrough
+  - Bullet list, Numbered list
+  - Indent/Outdent
+  - **Link** với text và URL riêng
+  - **Button** tạo nút bấm với style
+  - **Image** upload với resize và căn lề
 
-## Tech Stack
+### 📧 Tối ưu cho Email
+- **Outlook Compatibility Mode** - tạo HTML tương thích với Outlook cũ
+- Header/Footer image upload
+- Tùy chỉnh max-width email
+- Chọn font (Arial, Times New Roman, Tahoma, Verdana...)
 
-*   React 18 (Client Side)
-*   TypeScript
-*   TailwindCSS
-*   React-Quill
-*   Mammoth.js
+### 📤 Export
+- Download file HTML
+- Copy HTML code
+- Live Preview real-time
 
-## Usage
+## 🛠 Tech Stack
 
-1.  Upload a `.docx` file.
-2.  Upload header/footer images (optional).
-3.  Edit the content visually or via code.
-4.  Click "Export HTML" to save the file.
+- **Frontend:** React 18, TypeScript
+- **Editor:** Lexical (Facebook)
+- **Styling:** TailwindCSS
+- **DOCX Parser:** Mammoth.js
+- **Icons:** Lucide React
+- **Deploy:** GitHub Pages
+
+## 🚀 Sử dụng
+
+1. Mở https://zeusato.github.io/html-email/
+2. Upload file `.docx` hoặc soạn trực tiếp
+3. Upload header/footer images (tùy chọn)
+4. Chỉnh sửa nội dung
+5. Click **Export HTML** để tải về
+
+## 📦 Development
+
+```bash
+# Clone repo
+git clone https://github.com/zeusato/html-email.git
+cd html-email
+
+# Install dependencies
+npm install
+
+# Run dev server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+## 📝 License
+
+MIT
