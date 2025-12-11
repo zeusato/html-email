@@ -111,15 +111,15 @@ const contentToTableRows = (html: string, fontFamily: string): string => {
   if (!root) return html;
 
   const baseStyle = `font-family: ${fontFamily}; font-size: 11pt; color: #333333; text-align: justify; padding: 10px 0;`;
-  
+
   let rows = '';
-  
+
   // Process each top-level element
   Array.from(root.children).forEach(child => {
     const tagName = child.tagName.toLowerCase();
     let cellStyle = baseStyle;
     let content = child.innerHTML;
-    
+
     // Handle special tags
     switch (tagName) {
       case 'h1':
@@ -152,7 +152,7 @@ const contentToTableRows = (html: string, fontFamily: string): string => {
         }
         break;
     }
-    
+
     rows += `
                 <tr>
                     <td style="${cellStyle}">
@@ -160,7 +160,7 @@ const contentToTableRows = (html: string, fontFamily: string): string => {
                     </td>
                 </tr>`;
   });
-  
+
   return rows;
 };
 
@@ -178,12 +178,10 @@ export const generateFullEmailHtml = (
 ): string => {
   // Process body HTML to have inline styles
   const processedBody = inlineStyles(bodyHtml, fontFamily);
-  
-  // Header image row
+
+  // Header image
   const headerHtml = headerImg
-    ? `
-            <!-- Header Image -->
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                     <td style="margin: 0; padding: 0;">
                         <img style="width: 100%; max-width: ${maxWidth}px; height: auto; display: block;"
@@ -194,11 +192,9 @@ export const generateFullEmailHtml = (
             </table>`
     : '';
 
-  // Footer image row  
+  // Footer image
   const footerHtml = footerImg
-    ? `
-            <!-- Footer Image -->
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                     <td style="margin: 0; padding: 0;">
                         <img style="width: 100%; max-width: ${maxWidth}px; height: auto; display: block;"
@@ -209,8 +205,15 @@ export const generateFullEmailHtml = (
             </table>`
     : '';
 
-  // Content rows
-  const contentRows = contentToTableRows(processedBody, fontFamily);
+  // Content with inline styles
+  const contentHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="max-width: ${maxWidth}px;">
+                <tr>
+                    <td style="font-family: ${fontFamily}; font-size: 11pt; color: #333333; text-align: justify; padding: 10px 0;">
+                        ${processedBody}
+                    </td>
+                </tr>
+            </table>`;
 
   // Generate the simplified email HTML (table only, no DOCTYPE/html/head)
   return `<!--[if mso]>
@@ -220,12 +223,10 @@ export const generateFullEmailHtml = (
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
     style="max-width: ${maxWidth}px; margin: 0 auto;">
     <tr>
-        <td>${headerHtml}
-
-            <!-- Content -->
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                style="max-width: ${maxWidth}px;">${contentRows}
-            </table>${footerHtml}
+        <td>
+            ${headerHtml}
+            ${contentHtml}
+            ${footerHtml}
         </td>
     </tr>
 </table>
@@ -234,3 +235,4 @@ export const generateFullEmailHtml = (
 </table>
 <![endif]-->`;
 };
+
