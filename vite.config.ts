@@ -12,10 +12,9 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     define: {
-      'process.env': JSON.stringify({
-        API_KEY: env.GEMINI_API_KEY || '',
-        GEMINI_API_KEY: env.GEMINI_API_KEY || '',
-      })
+      'process.env': {},
+      'process.env.NODE_ENV': JSON.stringify(mode),
+      'global': 'globalThis',
     },
     resolve: {
       alias: {
@@ -24,3 +23,4 @@ export default defineConfig(({ mode }) => {
     }
   };
 });
+
