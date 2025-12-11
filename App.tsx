@@ -56,7 +56,7 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     const fullHtml = generateFullEmailHtml(
       template.htmlContent,
       template.headerImage,
@@ -65,15 +65,43 @@ const App: React.FC = () => {
       template.maxWidth,
       template.fontFamily
     );
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(fullHtml);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 500);
+
+    // Create a temporary container for the email content
+    const container = document.createElement('div');
+    container.innerHTML = fullHtml;
+    container.style.width = `${template.maxWidth}px`;
+    container.style.margin = '0 auto';
+    container.style.backgroundColor = '#ffffff';
+    document.body.appendChild(container);
+
+    try {
+      // Dynamic import html2pdf
+      const html2pdf = (await import('html2pdf.js')).default;
+
+      const opt = {
+        margin: 10,
+        filename: 'email-template.pdf',
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+      };
+
+      await html2pdf().set(opt).from(container).save();
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      // Fallback to print
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(fullHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+      }
+    } finally {
+      document.body.removeChild(container);
     }
   };
 
